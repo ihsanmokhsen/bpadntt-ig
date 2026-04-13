@@ -6,6 +6,8 @@
   const logoImage = document.getElementById('logo-image');
   const formatSelect = document.getElementById('format-select');
   const formatNote = document.getElementById('format-note');
+  const bgColorInput = document.getElementById('bg-color-input');
+  const bgColorText = document.getElementById('bg-color-text');
 
   const titleInput = document.getElementById('title-input');
   const subtitleInput = document.getElementById('subtitle-input');
@@ -41,6 +43,8 @@
     format: 'portrait',
     width: FORMATS.portrait.width,
     height: FORMATS.portrait.height,
+    imageBaseWidth: FORMATS.portrait.width * 1.25,
+    imageBaseHeight: FORMATS.portrait.height * 1.25,
     x: 0,
     y: 0,
     scale: 1,
@@ -64,6 +68,42 @@
 
   const setStatus = (message) => {
     statusText.textContent = message;
+  };
+
+  const applyBaseBackgroundColor = (colorValue) => {
+    postPreview.style.setProperty('--post-base-bg', colorValue);
+    bgColorInput.value = colorValue;
+    bgColorText.value = colorValue.toUpperCase();
+  };
+
+  const normalizeHexColor = (value) => {
+    const trimmed = value.trim();
+    return /^#([0-9a-fA-F]{6})$/.test(trimmed) ? trimmed.toLowerCase() : null;
+  };
+
+  const clampImagePosition = () => {
+    const scaledWidth = state.imageBaseWidth * state.scale;
+    const scaledHeight = state.imageBaseHeight * state.scale;
+    const maxOffsetX = Math.max(0, (scaledWidth - state.width) / 2);
+    const maxOffsetY = Math.max(0, (scaledHeight - state.height) / 2);
+
+    state.x = clamp(state.x, -maxOffsetX, maxOffsetX);
+    state.y = clamp(state.y, -maxOffsetY, maxOffsetY);
+  };
+
+  const updateBackgroundLayout = () => {
+    const naturalWidth = bgImage.naturalWidth || state.width;
+    const naturalHeight = bgImage.naturalHeight || state.height;
+    const coverScale = Math.max(state.width / naturalWidth, state.height / naturalHeight);
+
+    state.imageBaseWidth = naturalWidth * coverScale;
+    state.imageBaseHeight = naturalHeight * coverScale;
+
+    bgImage.style.width = `${state.imageBaseWidth}px`;
+    bgImage.style.height = `${state.imageBaseHeight}px`;
+
+    clampImagePosition();
+    applyBackgroundTransform();
   };
 
   const setTemplate = (templateName) => {
@@ -99,10 +139,12 @@
     formatSelect.value = state.format;
     formatNote.textContent = `Format aktif: ${nextFormat.label}`;
 
+    updateBackgroundLayout();
     updatePreviewScale();
   };
 
   const applyBackgroundTransform = () => {
+    clampImagePosition();
     bgImage.style.transform = `translate(-50%, -50%) translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
   };
 
@@ -239,6 +281,22 @@
   titleInput.addEventListener('input', updateTexts);
   subtitleInput.addEventListener('input', updateTexts);
   footerInput.addEventListener('input', updateTexts);
+  bgImage.addEventListener('load', updateBackgroundLayout);
+  bgColorInput.addEventListener('input', () => {
+    applyBaseBackgroundColor(bgColorInput.value);
+    setStatus(`Warna latar diubah ke ${bgColorInput.value.toUpperCase()}.`);
+  });
+  bgColorText.addEventListener('change', () => {
+    const normalized = normalizeHexColor(bgColorText.value);
+    if (!normalized) {
+      bgColorText.value = bgColorInput.value.toUpperCase();
+      setStatus('Format warna tidak valid. Gunakan format seperti #2D2D2D.');
+      return;
+    }
+
+    applyBaseBackgroundColor(normalized);
+    setStatus(`Warna latar diubah ke ${normalized.toUpperCase()}.`);
+  });
   formatSelect.addEventListener('change', () => {
     setFormat(formatSelect.value);
     setStatus(`Ukuran diubah ke ${FORMATS[formatSelect.value].label}.`);
@@ -353,6 +411,7 @@
   setFormat('portrait');
   setTemplate('minimal');
   setTheme('light');
+  applyBaseBackgroundColor('#0f172a');
   updateTexts();
   resetPosition();
   updatePreviewScale();
