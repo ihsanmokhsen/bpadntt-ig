@@ -141,10 +141,22 @@
   border-color: #0f172a;
 }
 
+.dark .template-btn.active {
+  background: #ff4500;
+  color: #ffffff;
+  border-color: #ff4500;
+}
+
 .theme-btn.active {
   background: #2d2d2d;
   color: #f5f1e8;
   border-color: #2d2d2d;
+}
+
+.dark .theme-btn.active {
+  background: #c58940;
+  color: #121212;
+  border-color: #c58940;
 }
 
 #post-preview.theme-light {
