@@ -1,13 +1,23 @@
 (() => {
   const postPreview = document.getElementById('post-preview');
+  const storyPreview = document.getElementById('story-preview');
+  const storyGrid = document.getElementById('story-grid');
   const previewViewport = document.getElementById('preview-viewport');
   const previewHolder = document.getElementById('preview-holder');
   const bgImage = document.getElementById('bg-image');
   const logoImage = document.getElementById('logo-image');
+  const contentTypeSelect = document.getElementById('content-type-select');
+  const storyLayoutSelect = document.getElementById('story-layout-select');
   const formatSelect = document.getElementById('format-select');
   const formatNote = document.getElementById('format-note');
   const bgColorInput = document.getElementById('bg-color-input');
   const bgColorText = document.getElementById('bg-color-text');
+  const storySplitCount = document.getElementById('story-split-count');
+  const storyOrientation = document.getElementById('story-orientation');
+  const storyGridInputs = document.getElementById('story-grid-inputs');
+  const postOnlyElements = [...document.querySelectorAll('.post-only')];
+  const storyOnlyElements = [...document.querySelectorAll('.story-only')];
+  const storyLinearOnlyElements = [...document.querySelectorAll('.story-linear-only')];
 
   const titleInput = document.getElementById('title-input');
   const subtitleInput = document.getElementById('subtitle-input');
@@ -38,8 +48,16 @@
     square: { width: 1080, height: 1080, label: 'Square 1080 x 1080' },
     landscape: { width: 1080, height: 566, label: 'Landscape 1080 x 566' },
   };
+  const STORY_FORMAT = { width: 1080, height: 1920, label: 'Story 1080 x 1920' };
+  const STORY_DRAG_BLEED = 1.12;
+  const STORY_GRID_LAYOUTS = {
+    'grid-2x2': { rows: 2, cols: 2, count: 4, label: '2 x 2' },
+    'grid-3x2': { rows: 3, cols: 2, count: 6, label: '3 x 2' },
+    'grid-4x2': { rows: 4, cols: 2, count: 8, label: '4 x 2' },
+  };
 
   const state = {
+    contentType: 'post',
     format: 'portrait',
     width: FORMATS.portrait.width,
     height: FORMATS.portrait.height,
@@ -56,6 +74,17 @@
     pinchDistance: null,
     pinchStartScale: 1,
     displayScale: 1,
+    storyLayout: 'linear',
+    storySplit: 2,
+    storyDirection: 'vertical',
+    storyImages: Array.from({ length: 8 }, () => ({
+      src: '',
+      x: 0,
+      y: 0,
+      naturalWidth: 0,
+      naturalHeight: 0,
+    })),
+    storyDraggingIndex: null,
   };
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -72,6 +101,7 @@
 
   const applyBaseBackgroundColor = (colorValue) => {
     postPreview.style.setProperty('--post-base-bg', colorValue);
+    storyPreview.style.background = colorValue;
     bgColorInput.value = colorValue;
     bgColorText.value = colorValue.toUpperCase();
   };
@@ -79,6 +109,171 @@
   const normalizeHexColor = (value) => {
     const trimmed = value.trim();
     return /^#([0-9a-fA-F]{6})$/.test(trimmed) ? trimmed.toLowerCase() : null;
+  };
+
+  const getActiveSize = () => {
+    if (state.contentType === 'story') {
+      return STORY_FORMAT;
+    }
+
+    return FORMATS[state.format] || FORMATS.portrait;
+  };
+
+  const updateCanvasSize = () => {
+    const activeSize = getActiveSize();
+    state.width = activeSize.width;
+    state.height = activeSize.height;
+    document.documentElement.style.setProperty('--post-width', String(state.width));
+    document.documentElement.style.setProperty('--post-height', String(state.height));
+    formatNote.textContent = `Format aktif: ${activeSize.label}`;
+  };
+
+  const getStoryCellMetrics = () => {
+    if (state.storyLayout in STORY_GRID_LAYOUTS) {
+      const gridLayout = STORY_GRID_LAYOUTS[state.storyLayout];
+      return {
+        width: STORY_FORMAT.width / gridLayout.cols,
+        height: STORY_FORMAT.height / gridLayout.rows,
+      };
+    }
+
+    if (state.storyDirection === 'horizontal') {
+      return {
+        width: STORY_FORMAT.width,
+        height: STORY_FORMAT.height / state.storySplit,
+      };
+    }
+
+    return {
+      width: STORY_FORMAT.width / state.storySplit,
+      height: STORY_FORMAT.height,
+    };
+  };
+
+  const clampStoryImagePosition = (storyItem) => {
+    const cellMetrics = getStoryCellMetrics();
+    const naturalWidth = storyItem.naturalWidth || cellMetrics.width;
+    const naturalHeight = storyItem.naturalHeight || cellMetrics.height;
+    const coverScale = Math.max(cellMetrics.width / naturalWidth, cellMetrics.height / naturalHeight) * STORY_DRAG_BLEED;
+    const renderWidth = naturalWidth * coverScale;
+    const renderHeight = naturalHeight * coverScale;
+    const maxOffsetX = Math.max(0, (renderWidth - cellMetrics.width) / 2);
+    const maxOffsetY = Math.max(0, (renderHeight - cellMetrics.height) / 2);
+
+    storyItem.x = clamp(storyItem.x, -maxOffsetX, maxOffsetX);
+    storyItem.y = clamp(storyItem.y, -maxOffsetY, maxOffsetY);
+
+    return {
+      renderWidth,
+      renderHeight,
+    };
+  };
+
+  const renderStoryGrid = () => {
+    storyGrid.innerHTML = '';
+    const gridLayout = STORY_GRID_LAYOUTS[state.storyLayout];
+    const gridCount = gridLayout ? gridLayout.count : state.storySplit;
+    storyGrid.style.gridTemplateColumns = gridLayout
+      ? `repeat(${gridLayout.cols}, 1fr)`
+      : state.storyDirection === 'vertical'
+        ? `repeat(${state.storySplit}, 1fr)`
+        : '1fr';
+    storyGrid.style.gridTemplateRows = gridLayout
+      ? `repeat(${gridLayout.rows}, 1fr)`
+      : state.storyDirection === 'horizontal'
+        ? `repeat(${state.storySplit}, 1fr)`
+        : '1fr';
+
+    for (let index = 0; index < gridCount; index += 1) {
+      const storyItem = state.storyImages[index];
+      const cell = document.createElement('div');
+      cell.className = 'story-cell';
+      cell.dataset.index = String(index);
+
+      const image = document.createElement('img');
+      image.alt = `Story Grid ${index + 1}`;
+      if (storyItem.src) {
+        const layout = clampStoryImagePosition(storyItem);
+        image.src = storyItem.src;
+        image.style.width = `${layout.renderWidth}px`;
+        image.style.height = `${layout.renderHeight}px`;
+        image.style.position = 'absolute';
+        image.style.top = '50%';
+        image.style.left = '50%';
+        image.style.maxWidth = 'none';
+        image.style.transform = `translate(-50%, -50%) translate(${storyItem.x}px, ${storyItem.y}px)`;
+      } else {
+        image.classList.add('hidden');
+      }
+
+      const placeholder = document.createElement('div');
+      placeholder.className = 'story-cell-placeholder';
+      placeholder.textContent = `GRID ${index + 1}`;
+      if (storyItem.src) {
+        placeholder.classList.add('hidden');
+      }
+
+      cell.append(image, placeholder);
+      storyGrid.append(cell);
+    }
+  };
+
+  const renderStoryInputList = () => {
+    storyGridInputs.innerHTML = '';
+    const gridLayout = STORY_GRID_LAYOUTS[state.storyLayout];
+    const gridCount = gridLayout ? gridLayout.count : state.storySplit;
+
+    for (let index = 0; index < gridCount; index += 1) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'rounded-xl border border-slate-200 p-2 dark:border-warmdark-border';
+
+      const label = document.createElement('label');
+      label.className = 'mb-1 block text-xs font-medium';
+      label.textContent = `Grid ${index + 1}`;
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.className = 'w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1 file:text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-body dark:file:bg-[#2A2A2A] dark:file:text-warmdark-text';
+      input.addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        readImageAsDataUrl(file, (imageUrl) => {
+          const previewImage = new Image();
+          previewImage.onload = () => {
+            state.storyImages[index] = {
+              src: imageUrl,
+              x: 0,
+              y: 0,
+              naturalWidth: previewImage.naturalWidth,
+              naturalHeight: previewImage.naturalHeight,
+            };
+            renderStoryGrid();
+            setStatus(`Gambar grid ${index + 1} diperbarui.`);
+          };
+          previewImage.src = imageUrl;
+        });
+      });
+
+      wrapper.append(label, input);
+      storyGridInputs.append(wrapper);
+    }
+  };
+
+  const updateContentVisibility = () => {
+    const isStory = state.contentType === 'story';
+    const isLinearStory = isStory && state.storyLayout === 'linear';
+
+    postOnlyElements.forEach((element) => {
+      element.classList.toggle('hidden', isStory);
+    });
+
+    storyOnlyElements.forEach((element) => {
+      element.classList.toggle('hidden', !isStory);
+    });
+
+    storyLinearOnlyElements.forEach((element) => {
+      element.classList.toggle('hidden', !isLinearStory);
+    });
   };
 
   const clampImagePosition = () => {
@@ -125,21 +320,60 @@
     });
   };
 
-  const setFormat = (formatName) => {
-    const nextFormat = FORMATS[formatName] || FORMATS.portrait;
-    state.format = formatName in FORMATS ? formatName : 'portrait';
-    state.width = nextFormat.width;
-    state.height = nextFormat.height;
+  const setContentType = (contentType) => {
+    stopDrag();
+    state.contentType = contentType === 'story' ? 'story' : 'post';
+    contentTypeSelect.value = state.contentType;
 
-    document.documentElement.style.setProperty('--post-width', String(state.width));
-    document.documentElement.style.setProperty('--post-height', String(state.height));
+    postPreview.classList.toggle('hidden', state.contentType !== 'post');
+    storyPreview.classList.toggle('hidden', state.contentType !== 'story');
+
+    updateContentVisibility();
+    updateCanvasSize();
+
+    if (state.contentType === 'post') {
+      updateBackgroundLayout();
+    } else {
+      renderStoryInputList();
+      renderStoryGrid();
+    }
+
+    updatePreviewScale();
+  };
+
+  const setFormat = (formatName) => {
+    state.format = formatName in FORMATS ? formatName : 'portrait';
 
     postPreview.classList.remove('format-portrait', 'format-square', 'format-landscape');
     postPreview.classList.add(`format-${state.format}`);
     formatSelect.value = state.format;
-    formatNote.textContent = `Format aktif: ${nextFormat.label}`;
 
+    updateCanvasSize();
     updateBackgroundLayout();
+    updatePreviewScale();
+  };
+
+  const setStorySplit = (splitCount) => {
+    state.storySplit = clamp(Number(splitCount) || 2, 2, 8);
+    storySplitCount.value = String(state.storySplit);
+    renderStoryInputList();
+    renderStoryGrid();
+    updatePreviewScale();
+  };
+
+  const setStoryDirection = (direction) => {
+    state.storyDirection = direction === 'horizontal' ? 'horizontal' : 'vertical';
+    storyOrientation.value = state.storyDirection;
+    renderStoryGrid();
+    updatePreviewScale();
+  };
+
+  const setStoryLayout = (layout) => {
+    state.storyLayout = layout in STORY_GRID_LAYOUTS ? layout : 'linear';
+    storyLayoutSelect.value = state.storyLayout;
+    updateContentVisibility();
+    renderStoryInputList();
+    renderStoryGrid();
     updatePreviewScale();
   };
 
@@ -186,7 +420,19 @@
     setZoom(1);
   };
 
+  const startStoryDrag = (index, clientX, clientY) => {
+    const storyItem = state.storyImages[index];
+    if (!storyItem?.src) return;
+
+    state.storyDraggingIndex = index;
+    state.startClientX = clientX;
+    state.startClientY = clientY;
+    state.startX = storyItem.x;
+    state.startY = storyItem.y;
+  };
+
   const startDrag = (clientX, clientY) => {
+    if (state.contentType !== 'post') return;
     state.dragging = true;
     state.startClientX = clientX;
     state.startClientY = clientY;
@@ -194,8 +440,24 @@
     state.startY = state.y;
   };
 
+  const dragStoryTo = (clientX, clientY) => {
+    if (state.storyDraggingIndex === null || state.contentType !== 'story') return;
+
+    const storyItem = state.storyImages[state.storyDraggingIndex];
+    if (!storyItem) return;
+
+    const scaleFactor = state.displayScale || 1;
+    const deltaX = (clientX - state.startClientX) / scaleFactor;
+    const deltaY = (clientY - state.startClientY) / scaleFactor;
+
+    storyItem.x = state.startX + deltaX;
+    storyItem.y = state.startY + deltaY;
+    clampStoryImagePosition(storyItem);
+    renderStoryGrid();
+  };
+
   const dragTo = (clientX, clientY) => {
-    if (!state.dragging) return;
+    if (!state.dragging || state.contentType !== 'post') return;
     const scaleFactor = state.displayScale || 1;
     const deltaX = (clientX - state.startClientX) / scaleFactor;
     const deltaY = (clientY - state.startClientY) / scaleFactor;
@@ -206,15 +468,23 @@
 
   const stopDrag = () => {
     state.dragging = false;
+    state.storyDraggingIndex = null;
   };
 
   previewViewport.addEventListener('mousedown', (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
+    const storyCell = event.target.closest('.story-cell');
+    if (state.contentType === 'story' && storyCell) {
+      startStoryDrag(Number(storyCell.dataset.index), event.clientX, event.clientY);
+      return;
+    }
+
     startDrag(event.clientX, event.clientY);
   });
 
   window.addEventListener('mousemove', (event) => {
+    dragStoryTo(event.clientX, event.clientY);
     dragTo(event.clientX, event.clientY);
   });
 
@@ -229,6 +499,11 @@
         state.pinchStartScale = state.scale;
       } else if (event.touches.length === 1) {
         const touch = event.touches[0];
+        const storyCell = event.target.closest('.story-cell');
+        if (state.contentType === 'story' && storyCell) {
+          startStoryDrag(Number(storyCell.dataset.index), touch.clientX, touch.clientY);
+          return;
+        }
         startDrag(touch.clientX, touch.clientY);
       }
     },
@@ -243,6 +518,10 @@
         const currentDistance = getDistance(event.touches[0], event.touches[1]);
         const ratio = currentDistance / state.pinchDistance;
         setZoom(state.pinchStartScale * ratio);
+      } else if (event.touches.length === 1 && state.storyDraggingIndex !== null) {
+        event.preventDefault();
+        const touch = event.touches[0];
+        dragStoryTo(touch.clientX, touch.clientY);
       } else if (event.touches.length === 1 && state.dragging) {
         event.preventDefault();
         const touch = event.touches[0];
@@ -282,6 +561,14 @@
   subtitleInput.addEventListener('input', updateTexts);
   footerInput.addEventListener('input', updateTexts);
   bgImage.addEventListener('load', updateBackgroundLayout);
+  contentTypeSelect.addEventListener('change', () => {
+    setContentType(contentTypeSelect.value);
+    setStatus(state.contentType === 'story' ? 'Mode Story aktif.' : 'Mode Post aktif.');
+  });
+  storyLayoutSelect.addEventListener('change', () => {
+    setStoryLayout(storyLayoutSelect.value);
+    setStatus(state.storyLayout in STORY_GRID_LAYOUTS ? `Layout story ${STORY_GRID_LAYOUTS[state.storyLayout].label} aktif.` : 'Layout story linear aktif.');
+  });
   bgColorInput.addEventListener('input', () => {
     applyBaseBackgroundColor(bgColorInput.value);
     setStatus(`Warna latar diubah ke ${bgColorInput.value.toUpperCase()}.`);
@@ -300,6 +587,14 @@
   formatSelect.addEventListener('change', () => {
     setFormat(formatSelect.value);
     setStatus(`Ukuran diubah ke ${FORMATS[formatSelect.value].label}.`);
+  });
+  storySplitCount.addEventListener('change', () => {
+    setStorySplit(storySplitCount.value);
+    setStatus(`Grid story diubah ke ${storySplitCount.value}.`);
+  });
+  storyOrientation.addEventListener('change', () => {
+    setStoryDirection(storyOrientation.value);
+    setStatus(storyOrientation.value === 'horizontal' ? 'Grid story mendatar aktif.' : 'Grid story tegak aktif.');
   });
 
   zoomRange.addEventListener('input', () => {
@@ -344,7 +639,8 @@
     exportBtn.disabled = true;
 
     try {
-      const dataUrl = await htmlToImage.toPng(postPreview, {
+      const exportTarget = state.contentType === 'story' ? storyPreview : postPreview;
+      const dataUrl = await htmlToImage.toPng(exportTarget, {
         cacheBust: true,
         pixelRatio: 1,
         width: state.width,
@@ -352,11 +648,11 @@
       });
 
       const link = document.createElement('a');
-      link.download = 'bpad-post.png';
+      link.download = state.contentType === 'story' ? 'bpad-story.png' : 'bpad-post.png';
       link.href = dataUrl;
       link.click();
 
-      setStatus('Export berhasil: bpad-post.png');
+      setStatus(`Export berhasil: ${link.download}`);
     } catch (error) {
       console.error(error);
       setStatus('Export gagal. Coba gunakan gambar dengan ukuran lebih kecil.');
@@ -408,7 +704,11 @@
 
   setDefaultAssets();
   setStatus('Logo NTT aktif otomatis. Siap membuat konten.');
+  setContentType('post');
+  setStoryLayout('linear');
   setFormat('portrait');
+  setStorySplit(2);
+  setStoryDirection('vertical');
   setTemplate('minimal');
   setTheme('light');
   applyBaseBackgroundColor('#0f172a');
