@@ -28,6 +28,10 @@
   const previewTitle = document.getElementById('preview-title');
   const previewSubtitle = document.getElementById('preview-subtitle');
   const previewFooter = document.getElementById('preview-footer');
+  const titleSizeRange = document.getElementById('title-size-range');
+  const titleSizeValue = document.getElementById('title-size-value');
+  const subtitleSizeRange = document.getElementById('subtitle-size-range');
+  const subtitleSizeValue = document.getElementById('subtitle-size-value');
 
   const zoomRange = document.getElementById('zoom-range');
   const zoomInBtn = document.getElementById('zoom-in');
@@ -302,12 +306,23 @@
   };
 
   const setTemplate = (templateName) => {
-    postPreview.classList.remove('template-minimal', 'template-classic', 'template-bold');
-    postPreview.classList.add(`template-${templateName}`);
+    const templates = ['minimal', 'classic', 'bold', 'editorial', 'panel', 'ribbon'];
+    const nextTemplate = templates.includes(templateName) ? templateName : 'minimal';
+    postPreview.classList.remove(...templates.map((name) => `template-${name}`));
+    postPreview.classList.add(`template-${nextTemplate}`);
 
     templateButtons.forEach((button) => {
-      button.classList.toggle('active', button.dataset.template === templateName);
+      button.classList.toggle('active', button.dataset.template === nextTemplate);
     });
+  };
+
+  const setTextSizes = () => {
+    const titleSize = clamp(Number(titleSizeRange.value) || 68, 40, 110);
+    const subtitleSize = clamp(Number(subtitleSizeRange.value) || 36, 20, 60);
+    postPreview.style.setProperty('--title-size', `${titleSize}px`);
+    postPreview.style.setProperty('--subtitle-size', `${subtitleSize}px`);
+    titleSizeValue.textContent = `${titleSize} px`;
+    subtitleSizeValue.textContent = `${subtitleSize} px`;
   };
 
   const setTheme = (themeName) => {
@@ -560,6 +575,8 @@
   titleInput.addEventListener('input', updateTexts);
   subtitleInput.addEventListener('input', updateTexts);
   footerInput.addEventListener('input', updateTexts);
+  titleSizeRange.addEventListener('input', setTextSizes);
+  subtitleSizeRange.addEventListener('input', setTextSizes);
   bgImage.addEventListener('load', updateBackgroundLayout);
   contentTypeSelect.addEventListener('change', () => {
     setContentType(contentTypeSelect.value);
@@ -713,6 +730,7 @@
   setTheme('light');
   applyBaseBackgroundColor('#0f172a');
   updateTexts();
+  setTextSizes();
   resetPosition();
   updatePreviewScale();
 })();
