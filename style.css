@@ -195,6 +195,26 @@
   border-color: #0f172a;
 }
 
+.editor-tab {
+  color: #64748b;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.editor-tab.active {
+  color: #0f172a;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+.dark .editor-tab {
+  color: #b3b3b3;
+}
+
+.dark .editor-tab.active {
+  color: #ffffff;
+  background: #2d2d2d;
+}
+
 .dark .template-btn.active {
   background: #ff4500;
   color: #ffffff;
@@ -274,9 +294,9 @@
 }
 
 #post-preview.template-bold .header-block {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  flex-direction: row;
+  gap: 24px;
 }
 
 #post-preview.template-bold #logo-image {

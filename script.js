@@ -18,25 +18,40 @@
   const postOnlyElements = [...document.querySelectorAll('.post-only')];
   const storyOnlyElements = [...document.querySelectorAll('.story-only')];
   const storyLinearOnlyElements = [...document.querySelectorAll('.story-linear-only')];
+  const editorPanelElements = [...document.querySelectorAll('.editor-content, .editor-customize')];
+  const editorTabButtons = [...document.querySelectorAll('.editor-tab')];
 
   const titleInput = document.getElementById('title-input');
   const subtitleInput = document.getElementById('subtitle-input');
   const footerInput = document.getElementById('footer-input');
+  const agencyInput = document.getElementById('agency-input');
+  const regionInput = document.getElementById('region-input');
   const backgroundUpload = document.getElementById('background-upload');
   const logoUpload = document.getElementById('logo-upload');
 
   const previewTitle = document.getElementById('preview-title');
   const previewSubtitle = document.getElementById('preview-subtitle');
   const previewFooter = document.getElementById('preview-footer');
+  const previewAgency = document.getElementById('preview-agency');
+  const previewRegion = document.getElementById('preview-region');
+  const logoSizeRange = document.getElementById('logo-size-range');
+  const logoSizeValue = document.getElementById('logo-size-value');
+  const agencySizeRange = document.getElementById('agency-size-range');
+  const agencySizeValue = document.getElementById('agency-size-value');
+  const regionSizeRange = document.getElementById('region-size-range');
+  const regionSizeValue = document.getElementById('region-size-value');
   const titleSizeRange = document.getElementById('title-size-range');
   const titleSizeValue = document.getElementById('title-size-value');
   const subtitleSizeRange = document.getElementById('subtitle-size-range');
   const subtitleSizeValue = document.getElementById('subtitle-size-value');
+  const footerSizeRange = document.getElementById('footer-size-range');
+  const footerSizeValue = document.getElementById('footer-size-value');
 
   const zoomRange = document.getElementById('zoom-range');
   const zoomInBtn = document.getElementById('zoom-in');
   const zoomOutBtn = document.getElementById('zoom-out');
   const resetPositionBtn = document.getElementById('reset-position');
+  const saveSettingsBtn = document.getElementById('save-settings-btn');
   const exportBtn = document.getElementById('export-btn');
   const statusText = document.getElementById('status-text');
   const darkModeToggle = document.getElementById('dark-mode-toggle');
@@ -53,6 +68,7 @@
     landscape: { width: 1080, height: 566, label: 'Landscape 1080 x 566' },
   };
   const STORY_FORMAT = { width: 1080, height: 1920, label: 'Story 1080 x 1920' };
+  const DEVICE_SETTINGS_KEY = 'generate-instagram-device-settings-v1';
   const STORY_DRAG_BLEED = 1.12;
   const STORY_GRID_LAYOUTS = {
     'grid-2x2': { rows: 2, cols: 2, count: 4, label: '2 x 2' },
@@ -62,6 +78,10 @@
 
   const state = {
     contentType: 'post',
+    editorPanel: 'content',
+    template: 'minimal',
+    theme: 'light',
+    customLogo: '',
     format: 'portrait',
     width: FORMATS.portrait.width,
     height: FORMATS.portrait.height,
@@ -266,18 +286,24 @@
   const updateContentVisibility = () => {
     const isStory = state.contentType === 'story';
     const isLinearStory = isStory && state.storyLayout === 'linear';
+    const managedElements = new Set([...postOnlyElements, ...storyOnlyElements, ...storyLinearOnlyElements, ...editorPanelElements]);
 
-    postOnlyElements.forEach((element) => {
-      element.classList.toggle('hidden', isStory);
+    managedElements.forEach((element) => {
+      const matchesContentType = (!element.classList.contains('post-only') || !isStory)
+        && (!element.classList.contains('story-only') || isStory)
+        && (!element.classList.contains('story-linear-only') || isLinearStory);
+      const matchesEditorPanel = (!element.classList.contains('editor-content') || state.editorPanel === 'content')
+        && (!element.classList.contains('editor-customize') || state.editorPanel === 'customize');
+      element.classList.toggle('hidden', !(matchesContentType && matchesEditorPanel));
     });
+  };
 
-    storyOnlyElements.forEach((element) => {
-      element.classList.toggle('hidden', !isStory);
+  const setEditorPanel = (panelName) => {
+    state.editorPanel = panelName === 'customize' ? 'customize' : 'content';
+    editorTabButtons.forEach((button) => {
+      button.classList.toggle('active', button.dataset.editorPanel === state.editorPanel);
     });
-
-    storyLinearOnlyElements.forEach((element) => {
-      element.classList.toggle('hidden', !isLinearStory);
-    });
+    updateContentVisibility();
   };
 
   const clampImagePosition = () => {
@@ -308,6 +334,7 @@
   const setTemplate = (templateName) => {
     const templates = ['minimal', 'classic', 'bold', 'editorial', 'panel', 'ribbon'];
     const nextTemplate = templates.includes(templateName) ? templateName : 'minimal';
+    state.template = nextTemplate;
     postPreview.classList.remove(...templates.map((name) => `template-${name}`));
     postPreview.classList.add(`template-${nextTemplate}`);
 
@@ -317,16 +344,30 @@
   };
 
   const setTextSizes = () => {
+    const logoSize = clamp(Number(logoSizeRange.value) || 100, 60, 180);
+    const agencySize = clamp(Number(agencySizeRange.value) || 36, 20, 60);
+    const regionSize = clamp(Number(regionSizeRange.value) || 24, 14, 40);
     const titleSize = clamp(Number(titleSizeRange.value) || 68, 40, 110);
     const subtitleSize = clamp(Number(subtitleSizeRange.value) || 36, 20, 60);
+    const footerSize = clamp(Number(footerSizeRange.value) || 24, 14, 40);
+    logoImage.style.width = `${logoSize}px`;
+    logoImage.style.height = `${logoSize}px`;
+    previewAgency.style.fontSize = `${agencySize}px`;
+    previewRegion.style.fontSize = `${regionSize}px`;
     postPreview.style.setProperty('--title-size', `${titleSize}px`);
     postPreview.style.setProperty('--subtitle-size', `${subtitleSize}px`);
+    previewFooter.style.fontSize = `${footerSize}px`;
+    logoSizeValue.textContent = `${logoSize} px`;
+    agencySizeValue.textContent = `${agencySize} px`;
+    regionSizeValue.textContent = `${regionSize} px`;
     titleSizeValue.textContent = `${titleSize} px`;
     subtitleSizeValue.textContent = `${subtitleSize} px`;
+    footerSizeValue.textContent = `${footerSize} px`;
   };
 
   const setTheme = (themeName) => {
     const nextTheme = themeName === 'moonless' ? 'moonless' : 'light';
+    state.theme = nextTheme;
     postPreview.classList.remove('theme-light', 'theme-moonless');
     postPreview.classList.add(`theme-${nextTheme}`);
 
@@ -338,6 +379,12 @@
   const setContentType = (contentType) => {
     stopDrag();
     state.contentType = contentType === 'story' ? 'story' : 'post';
+    if (state.contentType === 'story') {
+      state.editorPanel = 'content';
+      editorTabButtons.forEach((button) => {
+        button.classList.toggle('active', button.dataset.editorPanel === state.editorPanel);
+      });
+    }
     contentTypeSelect.value = state.contentType;
 
     postPreview.classList.toggle('hidden', state.contentType !== 'post');
@@ -409,9 +456,97 @@
   };
 
   const updateTexts = () => {
+    const websiteText = footerInput.value.trim() || 'Alamat Website';
+    previewAgency.textContent = agencyInput.value.trim() || 'Nama Instansi';
+    previewRegion.textContent = regionInput.value.trim() || 'Nama Wilayah';
     previewTitle.textContent = titleInput.value.trim() || 'Judul Konten';
     previewSubtitle.textContent = subtitleInput.value.trim() || 'Subjudul konten';
-    previewFooter.textContent = footerInput.value.trim() || 'Footer';
+    previewFooter.textContent = websiteText;
+  };
+
+  const saveDeviceSettings = () => {
+    const settings = {
+      contentType: state.contentType,
+      format: state.format,
+      template: state.template,
+      theme: state.theme,
+      storyLayout: state.storyLayout,
+      storySplit: state.storySplit,
+      storyDirection: state.storyDirection,
+      backgroundColor: bgColorInput.value,
+      zoom: state.scale,
+      imageX: state.x,
+      imageY: state.y,
+      customLogo: state.customLogo,
+      darkMode: document.documentElement.classList.contains('dark'),
+      agency: agencyInput.value,
+      region: regionInput.value,
+      title: titleInput.value,
+      subtitle: subtitleInput.value,
+      website: footerInput.value,
+      logoSize: logoSizeRange.value,
+      agencySize: agencySizeRange.value,
+      regionSize: regionSizeRange.value,
+      titleSize: titleSizeRange.value,
+      subtitleSize: subtitleSizeRange.value,
+      footerSize: footerSizeRange.value,
+    };
+
+    try {
+      localStorage.setItem(DEVICE_SETTINGS_KEY, JSON.stringify(settings));
+      setStatus('Pengaturan tersimpan di perangkat ini.');
+    } catch (error) {
+      console.error(error);
+      setStatus('Pengaturan gagal disimpan. Penyimpanan browser mungkin penuh atau dinonaktifkan.');
+    }
+  };
+
+  const loadDeviceSettings = () => {
+    try {
+      const savedSettings = JSON.parse(localStorage.getItem(DEVICE_SETTINGS_KEY) || 'null');
+      if (!savedSettings || typeof savedSettings !== 'object') return false;
+
+      agencyInput.value = savedSettings.agency ?? agencyInput.value;
+      regionInput.value = savedSettings.region ?? regionInput.value;
+      titleInput.value = savedSettings.title ?? titleInput.value;
+      subtitleInput.value = savedSettings.subtitle ?? subtitleInput.value;
+      footerInput.value = savedSettings.website ?? footerInput.value;
+      logoSizeRange.value = savedSettings.logoSize ?? logoSizeRange.value;
+      agencySizeRange.value = savedSettings.agencySize ?? agencySizeRange.value;
+      regionSizeRange.value = savedSettings.regionSize ?? regionSizeRange.value;
+      titleSizeRange.value = savedSettings.titleSize ?? titleSizeRange.value;
+      subtitleSizeRange.value = savedSettings.subtitleSize ?? subtitleSizeRange.value;
+      footerSizeRange.value = savedSettings.footerSize ?? footerSizeRange.value;
+
+      setContentType(savedSettings.contentType);
+      setFormat(savedSettings.format);
+      setStoryLayout(savedSettings.storyLayout);
+      setStorySplit(savedSettings.storySplit);
+      setStoryDirection(savedSettings.storyDirection);
+      setTemplate(savedSettings.template);
+      setTheme(savedSettings.theme);
+      applyBaseBackgroundColor(normalizeHexColor(savedSettings.backgroundColor || '') || '#0f172a');
+
+      state.x = Number(savedSettings.imageX) || 0;
+      state.y = Number(savedSettings.imageY) || 0;
+      setZoom(savedSettings.zoom ?? 1);
+
+      if (typeof savedSettings.customLogo === 'string' && savedSettings.customLogo.startsWith('data:image/')) {
+        state.customLogo = savedSettings.customLogo;
+        logoImage.src = savedSettings.customLogo;
+        logoImage.alt = 'Logo tersimpan';
+      }
+
+      document.documentElement.classList.toggle('dark', Boolean(savedSettings.darkMode));
+      updateTexts();
+      setTextSizes();
+      setStatus('Pengaturan perangkat dimuat otomatis.');
+      return true;
+    } catch (error) {
+      console.error(error);
+      localStorage.removeItem(DEVICE_SETTINGS_KEY);
+      return false;
+    }
   };
 
   const readImageAsDataUrl = (file, onDone) => {
@@ -568,6 +703,7 @@
     readImageAsDataUrl(file, (imageUrl) => {
       logoImage.src = imageUrl;
       logoImage.alt = 'Logo kustom';
+      state.customLogo = imageUrl;
       setStatus('Logo diperbarui.');
     });
   });
@@ -575,8 +711,14 @@
   titleInput.addEventListener('input', updateTexts);
   subtitleInput.addEventListener('input', updateTexts);
   footerInput.addEventListener('input', updateTexts);
+  agencyInput.addEventListener('input', updateTexts);
+  regionInput.addEventListener('input', updateTexts);
+  logoSizeRange.addEventListener('input', setTextSizes);
+  agencySizeRange.addEventListener('input', setTextSizes);
+  regionSizeRange.addEventListener('input', setTextSizes);
   titleSizeRange.addEventListener('input', setTextSizes);
   subtitleSizeRange.addEventListener('input', setTextSizes);
+  footerSizeRange.addEventListener('input', setTextSizes);
   bgImage.addEventListener('load', updateBackgroundLayout);
   contentTypeSelect.addEventListener('change', () => {
     setContentType(contentTypeSelect.value);
@@ -631,8 +773,16 @@
     setStatus('Posisi dan zoom di-reset.');
   });
 
+  saveSettingsBtn.addEventListener('click', saveDeviceSettings);
+
   darkModeToggle.addEventListener('click', () => {
     document.documentElement.classList.toggle('dark');
+  });
+
+  editorTabButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      setEditorPanel(button.dataset.editorPanel);
+    });
   });
 
   templateButtons.forEach((button) => {
@@ -722,6 +872,7 @@
   setDefaultAssets();
   setStatus('Logo NTT aktif otomatis. Siap membuat konten.');
   setContentType('post');
+  setEditorPanel('content');
   setStoryLayout('linear');
   setFormat('portrait');
   setStorySplit(2);
@@ -732,5 +883,6 @@
   updateTexts();
   setTextSizes();
   resetPosition();
+  loadDeviceSettings();
   updatePreviewScale();
 })();

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>bapenda.nttprov.go.id</title>
+    <title>Generate Instagram</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -36,7 +36,7 @@
       <header class="border-b border-slate-200 bg-white/90 backdrop-blur dark:border-warmdark-border dark:bg-warmdark-card/90">
         <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6 lg:px-8">
           <div>
-            <h1 class="text-xl font-bold tracking-tight sm:text-2xl dark:text-warmdark-secondary">bapenda.nttprov.go.id</h1>
+            <h1 class="text-xl font-bold tracking-tight sm:text-2xl dark:text-warmdark-secondary">Generate Instagram</h1>
             <p class="text-xs text-slate-500 dark:text-warmdark-body">Instagram Post Format (Client-side)</p>
           </div>
           <button
@@ -53,6 +53,11 @@
         <section class="order-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-warmdark-border dark:bg-warmdark-card lg:order-1 lg:col-span-5">
           <h2 class="mb-3 text-base font-semibold">Input Konten</h2>
 
+          <div class="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1 dark:bg-[#181818]">
+            <button type="button" class="editor-tab active min-h-9 rounded-lg px-3 py-1.5 text-sm font-semibold" data-editor-panel="content">Konten</button>
+            <button type="button" class="editor-tab min-h-9 rounded-lg px-3 py-1.5 text-sm font-semibold" data-editor-panel="customize">Kustomisasi</button>
+          </div>
+
           <div class="space-y-3">
             <div>
               <label for="content-type-select" class="mb-1 block text-sm font-medium">Jenis Konten</label>
@@ -62,7 +67,7 @@
               </select>
             </div>
 
-            <div class="story-only hidden">
+            <div class="story-only editor-content hidden">
               <label for="story-layout-select" class="mb-1 block text-sm font-medium">Layout Story</label>
               <select id="story-layout-select" class="min-h-10 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">
                 <option value="linear">Linear</option>
@@ -72,7 +77,7 @@
               </select>
             </div>
 
-            <div class="story-only hidden story-linear-only">
+            <div class="story-only editor-content hidden story-linear-only">
               <label for="story-split-count" class="mb-1 block text-sm font-medium">Jumlah Grid Story</label>
               <select id="story-split-count" class="min-h-10 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">
                 <option value="2">2 Grid</option>
@@ -85,7 +90,7 @@
               </select>
             </div>
 
-            <div class="story-only hidden story-linear-only">
+            <div class="story-only editor-content hidden story-linear-only">
               <label for="story-orientation" class="mb-1 block text-sm font-medium">Arah Garis Grid</label>
               <select id="story-orientation" class="min-h-10 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">
                 <option value="vertical">Tegak</option>
@@ -93,38 +98,49 @@
               </select>
             </div>
 
-            <div class="story-only hidden">
+            <div class="story-only editor-content hidden">
               <p class="mb-1.5 block text-sm font-medium">Gambar per Grid Story</p>
               <div id="story-grid-inputs" class="space-y-2"></div>
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-content">
               <label for="background-upload" class="mb-1 block text-sm font-medium">Upload Gambar Utama</label>
               <input id="background-upload" type="file" accept="image/*" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1 file:text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-body dark:file:bg-[#2A2A2A] dark:file:text-warmdark-text" />
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-customize hidden">
               <label for="logo-upload" class="mb-1 block text-sm font-medium">Logo NTT aktif otomatis, ganti jika perlu</label>
               <input id="logo-upload" type="file" accept="image/*" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1 file:text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-body dark:file:bg-[#2A2A2A] dark:file:text-warmdark-text" />
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-customize hidden grid gap-2 sm:grid-cols-2">
+              <div>
+                <label for="agency-input" class="mb-1 block text-sm font-medium">Nama Instansi</label>
+                <textarea id="agency-input" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text" placeholder="Masukkan nama instansi">Badan Pendapatan dan Aset Daerah</textarea>
+              </div>
+              <div>
+                <label for="region-input" class="mb-1 block text-sm font-medium">Nama Wilayah</label>
+                <textarea id="region-input" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text" placeholder="Masukkan nama wilayah">Provinsi Nusa Tenggara Timur</textarea>
+              </div>
+            </div>
+
+            <div class="post-only editor-content">
               <label for="title-input" class="mb-1 block text-sm font-medium">Judul</label>
               <textarea id="title-input" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text" placeholder="Masukkan judul">Pelestarian Arsip Daerah
 untuk Generasi Mendatang</textarea>
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-content">
               <label for="subtitle-input" class="mb-1 block text-sm font-medium">Subjudul</label>
               <textarea id="subtitle-input" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text" placeholder="Masukkan subjudul">Komitmen BPAD Provinsi NTT dalam menjaga memori kolektif bangsa.</textarea>
             </div>
 
-            <div class="post-only">
-              <label for="footer-input" class="mb-1 block text-sm font-medium">Footer</label>
-              <input id="footer-input" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text" placeholder="Masukkan footer" value="bapenda.nttprov.go.id" />
+            <div class="post-only editor-customize hidden">
+              <label for="footer-input" class="mb-1 block text-sm font-medium">Website / Footer</label>
+              <input id="footer-input" type="text" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text" placeholder="Masukkan alamat website" value="bapenda.nttprov.go.id" />
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-shared">
               <label for="format-select" class="mb-1 block text-sm font-medium">Ukuran Post Instagram</label>
               <select id="format-select" class="min-h-10 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">
                 <option value="portrait">Portrait 1080 x 1350</option>
@@ -133,7 +149,7 @@ untuk Generasi Mendatang</textarea>
               </select>
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-shared">
               <p class="mb-1.5 block text-sm font-medium">Template (Swiss Style)</p>
               <div class="grid grid-cols-3 gap-2">
                 <button type="button" class="template-btn min-h-11 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-body" data-template="minimal">Minimal</button>
@@ -145,24 +161,57 @@ untuk Generasi Mendatang</textarea>
               </div>
             </div>
 
-            <div class="post-only rounded-xl border border-slate-200 p-2.5 dark:border-warmdark-border">
-              <div class="mb-2.5">
-                <div class="mb-1 flex items-center justify-between gap-3">
-                  <label for="title-size-range" class="text-sm font-medium">Ukuran Judul</label>
-                  <output id="title-size-value" for="title-size-range" class="min-w-12 text-right text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">68 px</output>
+            <div class="post-only editor-customize hidden rounded-xl border border-slate-200 p-2.5 dark:border-warmdark-border">
+              <p class="mb-2 text-sm font-medium">Ukuran Elemen</p>
+              <div class="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                <div>
+                  <div class="mb-1 flex items-center justify-between gap-2">
+                    <label for="logo-size-range" class="text-xs font-medium">Logo</label>
+                    <output id="logo-size-value" for="logo-size-range" class="text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">100 px</output>
+                  </div>
+                  <input id="logo-size-range" type="range" min="60" max="180" value="100" step="1" class="w-full accent-orange-600" />
                 </div>
-                <input id="title-size-range" type="range" min="40" max="110" value="68" step="1" class="w-full accent-orange-600" />
-              </div>
-              <div>
-                <div class="mb-1 flex items-center justify-between gap-3">
-                  <label for="subtitle-size-range" class="text-sm font-medium">Ukuran Subjudul</label>
-                  <output id="subtitle-size-value" for="subtitle-size-range" class="min-w-12 text-right text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">36 px</output>
+                <div>
+                  <div class="mb-1 flex items-center justify-between gap-2">
+                    <label for="agency-size-range" class="text-xs font-medium">Instansi</label>
+                    <output id="agency-size-value" for="agency-size-range" class="text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">36 px</output>
+                  </div>
+                  <input id="agency-size-range" type="range" min="20" max="60" value="36" step="1" class="w-full accent-orange-600" />
                 </div>
-                <input id="subtitle-size-range" type="range" min="20" max="60" value="36" step="1" class="w-full accent-orange-600" />
+                <div>
+                  <div class="mb-1 flex items-center justify-between gap-2">
+                    <label for="region-size-range" class="text-xs font-medium">Wilayah</label>
+                    <output id="region-size-value" for="region-size-range" class="text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">24 px</output>
+                  </div>
+                  <input id="region-size-range" type="range" min="14" max="40" value="24" step="1" class="w-full accent-orange-600" />
+                </div>
+                <div>
+                  <div class="mb-1 flex items-center justify-between gap-2">
+                    <label for="title-size-range" class="text-xs font-medium">Judul</label>
+                    <output id="title-size-value" for="title-size-range" class="text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">68 px</output>
+                  </div>
+                  <input id="title-size-range" type="range" min="40" max="110" value="68" step="1" class="w-full accent-orange-600" />
+                </div>
+                <div class="mb-1 flex items-center justify-between gap-3">
+                  <div class="w-full">
+                    <div class="mb-1 flex items-center justify-between gap-2">
+                      <label for="subtitle-size-range" class="text-xs font-medium">Subjudul</label>
+                      <output id="subtitle-size-value" for="subtitle-size-range" class="text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">36 px</output>
+                    </div>
+                    <input id="subtitle-size-range" type="range" min="20" max="60" value="36" step="1" class="w-full accent-orange-600" />
+                  </div>
+                </div>
+                <div>
+                  <div class="mb-1 flex items-center justify-between gap-2">
+                    <label for="footer-size-range" class="text-xs font-medium">Footer</label>
+                    <output id="footer-size-value" for="footer-size-range" class="text-xs font-semibold text-slate-500 dark:text-warmdark-secondary">24 px</output>
+                  </div>
+                  <input id="footer-size-range" type="range" min="14" max="40" value="24" step="1" class="w-full accent-orange-600" />
+                </div>
               </div>
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-shared">
               <p class="mb-1.5 block text-sm font-medium">Versi Warna</p>
               <div class="grid grid-cols-2 gap-2">
                 <button type="button" class="theme-btn min-h-11 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-body" data-theme="light">Light</button>
@@ -170,7 +219,7 @@ untuk Generasi Mendatang</textarea>
               </div>
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-shared">
               <label for="bg-color-input" class="mb-1 block text-sm font-medium">Warna Latar Post</label>
               <div class="flex items-center gap-2.5">
                 <input id="bg-color-input" type="color" value="#0f172a" class="h-11 w-16 cursor-pointer rounded-xl border border-slate-300 bg-transparent p-1 dark:border-warmdark-border dark:bg-[#242424]" />
@@ -178,13 +227,18 @@ untuk Generasi Mendatang</textarea>
               </div>
             </div>
 
-            <div class="post-only">
+            <div class="post-only editor-shared">
               <label for="zoom-range" class="mb-1 block text-sm font-medium">Zoom Background</label>
               <div class="flex items-center gap-2">
                 <button id="zoom-out" type="button" class="min-h-10 rounded-xl border border-slate-300 px-3.5 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">-</button>
                 <input id="zoom-range" type="range" min="0.5" max="2.5" value="1" step="0.01" class="w-full" />
                 <button id="zoom-in" type="button" class="min-h-10 rounded-xl border border-slate-300 px-3.5 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">+</button>
               </div>
+            </div>
+
+            <div class="post-only editor-customize hidden">
+              <button id="save-settings-btn" type="button" class="min-h-10 w-full rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 dark:bg-warmdark-secondary dark:text-[#121212] dark:hover:bg-[#D49A53]">Save Pengaturan di Perangkat</button>
+              <p class="mt-1.5 text-xs text-slate-500 dark:text-warmdark-muted">Tersimpan hanya di browser pada perangkat ini.</p>
             </div>
 
             <div class="grid gap-2 sm:grid-cols-2">
@@ -214,8 +268,8 @@ untuk Generasi Mendatang</textarea>
                     <div class="header-block">
                       <img id="logo-image" alt="Logo" draggable="false" />
                       <div class="gov-text">
-                        <span class="gov-main">Badan Pendapatan dan Aset Daerah</span>
-                        <span class="gov-sub">Provinsi Nusa Tenggara Timur</span>
+                        <span id="preview-agency" class="gov-main">Badan Pendapatan dan Aset Daerah</span>
+                        <span id="preview-region" class="gov-sub">Provinsi Nusa Tenggara Timur</span>
                       </div>
                     </div>
 
