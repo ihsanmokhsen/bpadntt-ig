@@ -332,7 +332,7 @@
   };
 
   const setTemplate = (templateName) => {
-    const templates = ['minimal', 'classic', 'bold', 'editorial', 'panel', 'ribbon'];
+    const templates = ['minimal', 'classic', 'bold', 'editorial', 'panel', 'ribbon', 'elegant', 'glass', 'cinematic'];
     const nextTemplate = templates.includes(templateName) ? templateName : 'minimal';
     state.template = nextTemplate;
     postPreview.classList.remove(...templates.map((name) => `template-${name}`));
