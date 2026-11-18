@@ -64,6 +64,7 @@
               <select id="content-type-select" class="min-h-10 w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">
                 <option value="post">Instagram Post</option>
                 <option value="story">Instagram Story</option>
+                <option value="video">Instagram Video / Reels</option>
               </select>
             </div>
 
@@ -103,9 +104,19 @@
               <div id="story-grid-inputs" class="space-y-2"></div>
             </div>
 
-            <div class="post-only editor-content">
+            <div class="post-only photo-only editor-content">
               <label for="background-upload" class="mb-1 block text-sm font-medium">Upload Gambar Utama</label>
               <input id="background-upload" type="file" accept="image/*" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1 file:text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-body dark:file:bg-[#2A2A2A] dark:file:text-warmdark-text" />
+            </div>
+
+            <div class="video-only editor-content hidden">
+              <label for="video-upload" class="mb-1 block text-sm font-medium">Upload Video</label>
+              <input id="video-upload" type="file" accept="video/*" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1 file:text-sm dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-body dark:file:bg-[#2A2A2A] dark:file:text-warmdark-text" />
+              <div class="mt-2 flex items-center gap-2">
+                <button id="video-play-btn" type="button" class="min-h-10 flex-1 rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">Jeda</button>
+                <button id="video-sound-btn" type="button" class="min-h-10 flex-1 rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium dark:border-warmdark-border dark:bg-[#242424] dark:text-warmdark-text">Suara: Mati</button>
+              </div>
+              <p id="video-info" class="mt-1.5 text-xs text-slate-500 dark:text-warmdark-muted">Belum ada video. Export berjalan sepanjang durasi video, jadi biarkan tab ini tetap terbuka.</p>
             </div>
 
             <div class="post-only editor-customize hidden">
@@ -146,6 +157,7 @@ untuk Generasi Mendatang</textarea>
                 <option value="portrait">Portrait 1080 x 1350</option>
                 <option value="square">Square 1080 x 1080</option>
                 <option value="landscape">Landscape 1080 x 566</option>
+                <option value="reels">Story / Reels 1080 x 1920</option>
               </select>
             </div>
 
@@ -265,6 +277,7 @@ untuk Generasi Mendatang</textarea>
                 <div id="post-preview" class="select-none template-minimal theme-light">
                   <div class="bg-layer">
                     <img id="bg-image" alt="Background" draggable="false" />
+                    <video id="bg-video" class="hidden" muted loop playsinline preload="auto"></video>
                   </div>
 
                   <div class="overlay-layer">

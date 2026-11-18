@@ -105,7 +105,8 @@
   overflow: hidden;
 }
 
-#bg-image {
+#bg-image,
+#bg-video {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -761,6 +762,11 @@
 
 #post-preview.format-portrait .overlay-layer {
   padding: 68px 56px;
+}
+
+/* Keep text clear of the Instagram Story/Reels UI (top bar, caption and buttons) */
+#post-preview.format-reels .overlay-layer {
+  padding: 200px 64px 300px;
 }
 
 #post-preview.format-square .overlay-layer {

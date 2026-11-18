@@ -5,6 +5,7 @@
   const previewViewport = document.getElementById('preview-viewport');
   const previewHolder = document.getElementById('preview-holder');
   const bgImage = document.getElementById('bg-image');
+  const bgVideo = document.getElementById('bg-video');
   const logoImage = document.getElementById('logo-image');
   const contentTypeSelect = document.getElementById('content-type-select');
   const storyLayoutSelect = document.getElementById('story-layout-select');
@@ -18,6 +19,8 @@
   const postOnlyElements = [...document.querySelectorAll('.post-only')];
   const storyOnlyElements = [...document.querySelectorAll('.story-only')];
   const storyLinearOnlyElements = [...document.querySelectorAll('.story-linear-only')];
+  const photoOnlyElements = [...document.querySelectorAll('.photo-only')];
+  const videoOnlyElements = [...document.querySelectorAll('.video-only')];
   const editorPanelElements = [...document.querySelectorAll('.editor-content, .editor-customize')];
   const editorTabButtons = [...document.querySelectorAll('.editor-tab')];
 
@@ -27,6 +30,10 @@
   const agencyInput = document.getElementById('agency-input');
   const regionInput = document.getElementById('region-input');
   const backgroundUpload = document.getElementById('background-upload');
+  const videoUpload = document.getElementById('video-upload');
+  const videoPlayBtn = document.getElementById('video-play-btn');
+  const videoSoundBtn = document.getElementById('video-sound-btn');
+  const videoInfo = document.getElementById('video-info');
   const logoUpload = document.getElementById('logo-upload');
 
   const previewTitle = document.getElementById('preview-title');
@@ -66,7 +73,18 @@
     portrait: { width: 1080, height: 1350, label: 'Portrait 1080 x 1350' },
     square: { width: 1080, height: 1080, label: 'Square 1080 x 1080' },
     landscape: { width: 1080, height: 566, label: 'Landscape 1080 x 566' },
+    reels: { width: 1080, height: 1920, label: 'Story / Reels 1080 x 1920' },
   };
+  const CONTENT_TYPES = ['post', 'story', 'video'];
+  const VIDEO_FPS = 30;
+  const VIDEO_BITRATE = 8_000_000;
+  const VIDEO_MIME_TYPES = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+  ];
   const STORY_FORMAT = { width: 1080, height: 1920, label: 'Story 1080 x 1920' };
   const DEVICE_SETTINGS_KEY = 'generate-instagram-device-settings-v1';
   const STORY_DRAG_BLEED = 1.12;
@@ -109,9 +127,23 @@
       naturalHeight: 0,
     })),
     storyDraggingIndex: null,
+    videoUrl: '',
+    videoAudioSource: null,
+    videoAudioContext: null,
+    recorder: null,
   };
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  // Post and video share the same canvas, templates and background controls.
+  const isPostLike = () => state.contentType !== 'story';
+  const isVideo = () => state.contentType === 'video';
+  const getBackgroundMedia = () => (isVideo() ? bgVideo : bgImage);
+
+  const formatSeconds = (seconds) => {
+    const total = Math.max(0, Math.round(seconds || 0));
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  };
 
   const getDistance = (touchA, touchB) => {
     const dx = touchB.clientX - touchA.clientX;
@@ -286,12 +318,21 @@
   const updateContentVisibility = () => {
     const isStory = state.contentType === 'story';
     const isLinearStory = isStory && state.storyLayout === 'linear';
-    const managedElements = new Set([...postOnlyElements, ...storyOnlyElements, ...storyLinearOnlyElements, ...editorPanelElements]);
+    const managedElements = new Set([
+      ...postOnlyElements,
+      ...storyOnlyElements,
+      ...storyLinearOnlyElements,
+      ...photoOnlyElements,
+      ...videoOnlyElements,
+      ...editorPanelElements,
+    ]);
 
     managedElements.forEach((element) => {
       const matchesContentType = (!element.classList.contains('post-only') || !isStory)
         && (!element.classList.contains('story-only') || isStory)
-        && (!element.classList.contains('story-linear-only') || isLinearStory);
+        && (!element.classList.contains('story-linear-only') || isLinearStory)
+        && (!element.classList.contains('photo-only') || state.contentType === 'post')
+        && (!element.classList.contains('video-only') || isVideo());
       const matchesEditorPanel = (!element.classList.contains('editor-content') || state.editorPanel === 'content')
         && (!element.classList.contains('editor-customize') || state.editorPanel === 'customize');
       element.classList.toggle('hidden', !(matchesContentType && matchesEditorPanel));
@@ -317,15 +358,16 @@
   };
 
   const updateBackgroundLayout = () => {
-    const naturalWidth = bgImage.naturalWidth || state.width;
-    const naturalHeight = bgImage.naturalHeight || state.height;
+    const media = getBackgroundMedia();
+    const naturalWidth = (isVideo() ? media.videoWidth : media.naturalWidth) || state.width;
+    const naturalHeight = (isVideo() ? media.videoHeight : media.naturalHeight) || state.height;
     const coverScale = Math.max(state.width / naturalWidth, state.height / naturalHeight);
 
     state.imageBaseWidth = naturalWidth * coverScale;
     state.imageBaseHeight = naturalHeight * coverScale;
 
-    bgImage.style.width = `${state.imageBaseWidth}px`;
-    bgImage.style.height = `${state.imageBaseHeight}px`;
+    media.style.width = `${state.imageBaseWidth}px`;
+    media.style.height = `${state.imageBaseHeight}px`;
 
     clampImagePosition();
     applyBackgroundTransform();
@@ -378,7 +420,7 @@
 
   const setContentType = (contentType) => {
     stopDrag();
-    state.contentType = contentType === 'story' ? 'story' : 'post';
+    state.contentType = CONTENT_TYPES.includes(contentType) ? contentType : 'post';
     if (state.contentType === 'story') {
       state.editorPanel = 'content';
       editorTabButtons.forEach((button) => {
@@ -387,13 +429,22 @@
     }
     contentTypeSelect.value = state.contentType;
 
-    postPreview.classList.toggle('hidden', state.contentType !== 'post');
+    postPreview.classList.toggle('hidden', !isPostLike());
     storyPreview.classList.toggle('hidden', state.contentType !== 'story');
+    bgImage.classList.toggle('hidden', isVideo());
+    bgVideo.classList.toggle('hidden', !isVideo());
+    exportBtn.textContent = isVideo() ? 'Export Video' : 'Export PNG';
+    if (isVideo() && state.videoUrl) {
+      bgVideo.play().catch(() => {});
+    } else {
+      bgVideo.pause();
+    }
+    updateVideoButtons();
 
     updateContentVisibility();
     updateCanvasSize();
 
-    if (state.contentType === 'post') {
+    if (isPostLike()) {
       updateBackgroundLayout();
     } else {
       renderStoryInputList();
@@ -406,7 +457,7 @@
   const setFormat = (formatName) => {
     state.format = formatName in FORMATS ? formatName : 'portrait';
 
-    postPreview.classList.remove('format-portrait', 'format-square', 'format-landscape');
+    postPreview.classList.remove(...Object.keys(FORMATS).map((name) => `format-${name}`));
     postPreview.classList.add(`format-${state.format}`);
     formatSelect.value = state.format;
 
@@ -441,7 +492,14 @@
 
   const applyBackgroundTransform = () => {
     clampImagePosition();
-    bgImage.style.transform = `translate(-50%, -50%) translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+    const transform = `translate(-50%, -50%) translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+    bgImage.style.transform = transform;
+    bgVideo.style.transform = transform;
+  };
+
+  const updateVideoButtons = () => {
+    videoPlayBtn.textContent = bgVideo.paused ? 'Putar' : 'Jeda';
+    videoSoundBtn.textContent = bgVideo.muted ? 'Suara: Mati' : 'Suara: Nyala';
   };
 
   const updatePreviewScale = () => {
@@ -582,7 +640,7 @@
   };
 
   const startDrag = (clientX, clientY) => {
-    if (state.contentType !== 'post') return;
+    if (!isPostLike()) return;
     state.dragging = true;
     state.startClientX = clientX;
     state.startClientY = clientY;
@@ -607,7 +665,7 @@
   };
 
   const dragTo = (clientX, clientY) => {
-    if (!state.dragging || state.contentType !== 'post') return;
+    if (!state.dragging || !isPostLike()) return;
     const scaleFactor = state.displayScale || 1;
     const deltaX = (clientX - state.startClientX) / scaleFactor;
     const deltaY = (clientY - state.startClientY) / scaleFactor;
@@ -720,9 +778,40 @@
   subtitleSizeRange.addEventListener('input', setTextSizes);
   footerSizeRange.addEventListener('input', setTextSizes);
   bgImage.addEventListener('load', updateBackgroundLayout);
+  bgVideo.addEventListener('loadedmetadata', () => {
+    updateBackgroundLayout();
+    videoInfo.textContent = `Durasi ${formatSeconds(bgVideo.duration)} · ${bgVideo.videoWidth} x ${bgVideo.videoHeight}. Export berjalan sepanjang durasi video, jadi biarkan tab ini tetap terbuka.`;
+  });
+  bgVideo.addEventListener('play', updateVideoButtons);
+  bgVideo.addEventListener('pause', updateVideoButtons);
+  bgVideo.addEventListener('volumechange', updateVideoButtons);
+
+  videoUpload.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (state.videoUrl) URL.revokeObjectURL(state.videoUrl);
+    state.videoUrl = URL.createObjectURL(file);
+    bgVideo.src = state.videoUrl;
+    bgVideo.play().catch(() => {});
+    setStatus('Video diperbarui.');
+  });
+
+  videoPlayBtn.addEventListener('click', () => {
+    if (!state.videoUrl) return;
+    if (bgVideo.paused) {
+      bgVideo.play().catch(() => {});
+    } else {
+      bgVideo.pause();
+    }
+  });
+
+  videoSoundBtn.addEventListener('click', () => {
+    bgVideo.muted = !bgVideo.muted;
+  });
   contentTypeSelect.addEventListener('change', () => {
     setContentType(contentTypeSelect.value);
-    setStatus(state.contentType === 'story' ? 'Mode Story aktif.' : 'Mode Post aktif.');
+    const modeLabels = { post: 'Mode Post aktif.', story: 'Mode Story aktif.', video: 'Mode Video aktif. Upload video untuk mulai.' };
+    setStatus(modeLabels[state.contentType]);
   });
   storyLayoutSelect.addEventListener('change', () => {
     setStoryLayout(storyLayoutSelect.value);
@@ -801,7 +890,184 @@
     });
   });
 
+  const loadImage = (src) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+
+  const getVideoMimeType = () => {
+    if (typeof MediaRecorder === 'undefined') return null;
+    return VIDEO_MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) || null;
+  };
+
+  // Route the video's audio into the recording without playing it through the speakers.
+  const getVideoAudioTrack = async () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!state.videoAudioContext) {
+      state.videoAudioContext = new AudioContextClass();
+      state.videoAudioSource = state.videoAudioContext.createMediaElementSource(bgVideo);
+      // Once routed through Web Audio, the element only reaches the speakers via this connection.
+      state.videoAudioSource.connect(state.videoAudioContext.destination);
+    }
+
+    await state.videoAudioContext.resume();
+    const destination = state.videoAudioContext.createMediaStreamDestination();
+    state.videoAudioSource.connect(destination);
+    return { track: destination.stream.getAudioTracks()[0], destination };
+  };
+
+  const exportVideo = async () => {
+    if (!state.videoUrl || !bgVideo.videoWidth) {
+      setStatus('Upload video terlebih dahulu.');
+      return;
+    }
+
+    const mimeType = getVideoMimeType();
+    if (!mimeType) {
+      setStatus('Browser ini belum mendukung export video. Coba gunakan Chrome versi terbaru.');
+      return;
+    }
+
+    setStatus('Menyiapkan overlay video...');
+    exportBtn.disabled = true;
+
+    const baseBackground = bgColorInput.value;
+    const overlayUrl = await htmlToImage.toPng(postPreview, {
+      cacheBust: true,
+      pixelRatio: 1,
+      width: state.width,
+      height: state.height,
+      style: { background: 'transparent' },
+      filter: (node) => !node.classList?.contains('bg-layer'),
+    });
+    const overlayImage = await loadImage(overlayUrl);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = state.width;
+    canvas.height = state.height;
+    const context = canvas.getContext('2d');
+
+    const drawFrame = () => {
+      const renderWidth = state.imageBaseWidth * state.scale;
+      const renderHeight = state.imageBaseHeight * state.scale;
+      const centerX = state.width / 2 + state.x;
+      const centerY = state.height / 2 + state.y;
+      context.fillStyle = baseBackground;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bgVideo, centerX - renderWidth / 2, centerY - renderHeight / 2, renderWidth, renderHeight);
+      context.drawImage(overlayImage, 0, 0, canvas.width, canvas.height);
+    };
+
+    const stream = canvas.captureStream(VIDEO_FPS);
+    const wasMuted = bgVideo.muted;
+    let audio = null;
+    try {
+      audio = await getVideoAudioTrack();
+      if (audio?.track) stream.addTrack(audio.track);
+      // Record the sound, but keep the speakers quiet if the preview was muted.
+      if (wasMuted && audio) state.videoAudioSource.disconnect(state.videoAudioContext.destination);
+      bgVideo.muted = false;
+    } catch (error) {
+      console.error(error);
+      setStatus('Audio video tidak bisa direkam, export dilanjutkan tanpa suara.');
+    }
+
+    const chunks = [];
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: VIDEO_BITRATE });
+    state.recorder = recorder;
+    recorder.addEventListener('dataavailable', (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    });
+
+    let frameRequest = 0;
+    const renderLoop = () => {
+      drawFrame();
+      setStatus(`Merekam video ${formatSeconds(bgVideo.currentTime)} / ${formatSeconds(bgVideo.duration)}. Jangan tutup atau pindah tab.`);
+      frameRequest = requestAnimationFrame(renderLoop);
+    };
+
+    const finished = new Promise((resolve) => {
+      recorder.addEventListener('stop', resolve, { once: true });
+    });
+    const stopRecording = () => {
+      if (recorder.state !== 'inactive') recorder.stop();
+    };
+
+    bgVideo.pause();
+    bgVideo.loop = false;
+    bgVideo.currentTime = 0;
+    await Promise.race([
+      new Promise((resolve) => bgVideo.addEventListener('seeked', resolve, { once: true })),
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+    ]);
+    bgVideo.addEventListener('ended', stopRecording, { once: true });
+
+    drawFrame();
+    recorder.start(1000);
+    renderLoop();
+    exportBtn.textContent = 'Hentikan & Simpan';
+    exportBtn.disabled = false;
+    try {
+      await bgVideo.play();
+    } catch (error) {
+      console.error(error);
+      bgVideo.muted = true;
+      await bgVideo.play();
+    }
+
+    await finished;
+    cancelAnimationFrame(frameRequest);
+    bgVideo.removeEventListener('ended', stopRecording);
+    stream.getTracks().forEach((track) => track.stop());
+    if (audio) {
+      state.videoAudioSource.disconnect(audio.destination);
+      if (wasMuted) state.videoAudioSource.connect(state.videoAudioContext.destination);
+    }
+    state.recorder = null;
+    bgVideo.loop = true;
+    bgVideo.muted = wasMuted;
+    bgVideo.play().catch(() => {});
+    exportBtn.textContent = 'Export Video';
+
+    const extension = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `bpad-video.${extension}`;
+    link.href = downloadUrl;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+
+    setStatus(extension === 'mp4'
+      ? `Export berhasil: ${link.download}`
+      : `Export berhasil: ${link.download}. Browser ini hanya bisa membuat WebM; ubah ke MP4 sebelum upload ke Instagram, atau export ulang lewat Chrome/Safari terbaru.`);
+  };
+
   exportBtn.addEventListener('click', async () => {
+    if (state.recorder) {
+      state.recorder.stop();
+      return;
+    }
+
+    if (isVideo()) {
+      try {
+        await exportVideo();
+      } catch (error) {
+        console.error(error);
+        setStatus('Export video gagal. Coba video dengan resolusi atau durasi lebih kecil.');
+        state.recorder = null;
+        bgVideo.loop = true;
+        exportBtn.textContent = 'Export Video';
+      } finally {
+        exportBtn.disabled = false;
+      }
+      return;
+    }
+
     setStatus('Memproses export PNG...');
     exportBtn.disabled = true;
 
